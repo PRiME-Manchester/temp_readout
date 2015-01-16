@@ -4,17 +4,24 @@
 #define TIMER_TICK_PERIOD  10000 // 10ms
 #define XCHIPS 2
 #define YCHIPS 2
+#define SECS   300
 
 uint coreID, chipID, chipNum;
 sdp_msg_t my_msg;
-uint time_step = 0;
+uint time_step = 0, j=0;
 
 // Spinnaker function prototypes
 void send_msg(char *s);
 void get_temps(uint ticks, uint null);
-int frac(float num, uint precision);
-char *itoa(uint n);
-char *ftoa(float num, int precision);
+
+//int frac(float num, uint precision);
+//char *itoa(uint n);
+//char *ftoa(float num, int precision);
+
+void ftoa(float n, char *res, int precision);
+uint itoa(uint n, char s[], uint len);
+void reverse(char *s, int len);
+
 void sdp_init(void);
 
 // Main
@@ -36,9 +43,6 @@ int c_main(void)
   // Timer callback which reports status to the host
   spin1_callback_on(TIMER_TICK, get_temps, 1);
 
-	// Print out header
-	io_printf(IO_BUF, "Time,ChipID,T1,T2,T3\n");
-	
   // Go
   spin1_start(SYNC_WAIT);
 
@@ -48,17 +52,33 @@ int c_main(void)
 // Get temperatures and send them to host
 void get_temps(uint ticks, uint null)
 {
-  //char s[100];
+  char s[20], sout[50];
   float t;
   uint t1, k;
   uint temp1, temp2, temp3;
 
+  // This reads out values every 0.5s
 	t1 = time_step%50;
+
+  if (chipID==0 && coreID==1 && time_step==0)
+  {
+    // Print out header
+    io_printf(sout, "Time,ChipID,T1,T2,T3");
+    send_msg(sout);
+  }
+
+  if (time_step==SECS*100+4)
+  {
+    spin1_exit(0);
+
+    io_printf(s, "EOF");
+    send_msg(s);
+  }
 
   if (coreID==1 && t1<4 && chipNum==t1)		
 	//if (coreID==1)
 	{
-		t = (float)spin1_get_simulation_time()*TIMER_TICK_PERIOD/1e6;
+    t = (float)spin1_get_simulation_time()*TIMER_TICK_PERIOD/1e6;
 		//io_printf(s, "T: %ss. Trial: %d Progress: %d%%", ftoa(t,1));
 		//send_msg(s);
 
@@ -95,56 +115,88 @@ void get_temps(uint ticks, uint null)
 		sc[SC_TS2] = 0<<31;
 		//io_printf(IO_BUF, "k(T3):%d\n\n", k);
 
-		io_printf(IO_BUF, "%s,%d,%d,%d,%d\n", ftoa(t,3), chipNum, temp1, temp2, temp3);
-
-		//io_printf(s, "Chip ID: %d Temp1: %d Temp2 %d Temp3 %d", chipNum, temp1, temp2, temp3);
-		//send_msg(s);
+    ftoa(t, s, 2);
+		io_printf(sout, "%s,%d,%d,%d,%d,%d", s, ++j, chipNum, temp1, temp2, temp3);
+		// Send SDP message to host
+    send_msg(sout);
 	}
 
 	time_step++;
 }
 
-char *ftoa(float num, int precision)
+// Converts a floating point number to string.
+void ftoa(float n, char *res, int precision)
 {
-  static char s[20];
+  // Extract integer part
+  int ipart = (int)n;
 
-  strcpy(s, itoa((int)num));
-  strcat(s, ".");
-  strcat(s, itoa(frac(num, precision)));
+  // Extract floating part
+  float fpart = n - (int)n;
 
-  return s;
-}
+  // convert integer part to string
+  uint i = itoa(ipart, res, 0);
 
-// Return fractional part
-int frac(float num, uint precision)
-{ 
-  int m=1;
+  // check for display option after point
+  if (precision != 0)
+  {
+    res[i] = '.';  // add dot
 
-  if (precision>0)
+    // This computes pow(10,precision)
+    uint m=1;
+    if (precision>0)
     for (int i=0; i<precision; i++)
       m*=10;
-      
-  return (int)((num-(int)num)*m);
+
+    // Get the value of fraction part upto given no.
+    // of points after dot. The third parameter is needed
+    // to handle cases like 233.007
+    fpart = fpart * m;
+
+    itoa((int)fpart, res+i+1, precision);
+  }
 }
 
-char *itoa(uint n)
+ // Converts a given integer num to string str[].  len is the number
+ // of digits required in output. If len is more than the number
+ // of digits in num, then 0s are added at the beginning.
+uint itoa(uint num, char s[], uint len)
 {
-    char s[32];
-    static char rv[32];
-    int i = 0, j;
-// pop one decimal value at a time starting
-// with the least significant
+    uint i = 0;
+/*    while (num)
+    {
+      s[i++] = (num%10) + '0';
+      num = num/10;
+    }
+*/
+
     do {
-        s[i++] = '0' + n%10;
-        n /= 10;
-    } while (n>0);
+        s[i++] = '0' + num%10;
+        num /= 10;
+    } while (num>0);
 
-// digits will be in reverse order
-    for (j = 0; j < i; j++)
-      rv[j] = s[i-j-1];
+    // If number of digits required is more, then
+    // add 0s at the beginning
+    while (i < len)
+      s[i++] = '0';
+ 
+    reverse(s, i);
+    s[i] = '\0';
+    return i;
+}
 
-    rv[j] = '\0';
-    return rv;
+// reverses a string 's' of length 'len'
+void reverse(char *s, int len)
+{
+    int i=0, j=len-1;
+    char temp;
+    while (i<j)
+    {
+        temp = s[i];
+        s[i] = s[j];
+        s[j] = temp;
+        i++;
+        j--;
+    }
 }
 
 // Send SDP packet to host (for reporting purposes)
