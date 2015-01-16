@@ -50,26 +50,33 @@ sub main
 
     process_args ();
 
-    open(MYFILE, '>eth.log');
-    $SIG{'INT'} = sub {close(MYFILE)};
+    #open(MYFILE, '>eth.log');
+    #$SIG{'INT'} = sub {close(MYFILE)};
 
     $i = 1;
     while (1)
     {
     	my $rc = $spin->recv_sdp (timeout => $timeout, debug => 4);
 
-        if ($rc) {
+        if ($rc)
+        {
+            #Exit loop of EOF
+            if ($rc =~ /EOF/)
+            {
+                last;
+            }
+
             #Replace any %% with %. Seems like not all % were %%
             $rc =~ s/%%/%/g;
             #Replace all % with %%
             $rc =~ s/%/%%/g;
-            printf MYFILE $i.' '.$rc;
-            printf $i.' '.$rc;
-            $i++;
+
+            #printf MYFILE $i.$rc;
+            printf $rc;
         }
     }
 
-    close(MYFILE);
+    #close(MYFILE);
 }
 
 
