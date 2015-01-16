@@ -1,12 +1,13 @@
 #include <string.h>
 #include "spin1_api.h"
 
-#define TIMER_TICK_PERIOD  500000 // 500ms
+#define TIMER_TICK_PERIOD  10000 // 10ms
 #define XCHIPS 2
 #define YCHIPS 2
 
 uint coreID, chipID, chipNum;
 sdp_msg_t my_msg;
+uint time_step = 0;
 
 // Spinnaker function prototypes
 void send_msg(char *s);
@@ -24,7 +25,7 @@ int c_main(void)
   chipID = spin1_get_chip_id();
 
   // get this chip's number
-  chipNum = (chipID&255 * YCHIPS) + chipID>>8;
+  chipNum = ((chipID&255) * YCHIPS) + (chipID>>8);
 
   // initialise SDP message buffer
   sdp_init();
@@ -35,6 +36,9 @@ int c_main(void)
   // Timer callback which reports status to the host
   spin1_callback_on(TIMER_TICK, get_temps, 1);
 
+	// Print out header
+	io_printf(IO_BUF, "Time,ChipID,T1,T2,T3\n");
+	
   // Go
   spin1_start(SYNC_WAIT);
 
@@ -46,11 +50,14 @@ void get_temps(uint ticks, uint null)
 {
   //char s[100];
   float t;
-  int k;
-  int temp1, temp2, temp3;
+  uint t1, k;
+  uint temp1, temp2, temp3;
 
-  if (coreID==1)
-  {
+	t1 = time_step%50;
+
+  if (coreID==1 && t1<4 && chipNum==t1)		
+	//if (coreID==1)
+	{
 		t = (float)spin1_get_simulation_time()*TIMER_TICK_PERIOD/1e6;
 		//io_printf(s, "T: %ss. Trial: %d Progress: %d%%", ftoa(t,1));
 		//send_msg(s);
@@ -88,11 +95,24 @@ void get_temps(uint ticks, uint null)
 		sc[SC_TS2] = 0<<31;
 		//io_printf(IO_BUF, "k(T3):%d\n\n", k);
 
-		io_printf(IO_BUF, "T:%5ss. ChipID:%d. T1=%8d. T2=%8d. T3=%8d\n", ftoa(t,1), chipNum, temp1, temp2, temp3);
+		io_printf(IO_BUF, "%s,%d,%d,%d,%d\n", ftoa(t,3), chipNum, temp1, temp2, temp3);
 
 		//io_printf(s, "Chip ID: %d Temp1: %d Temp2 %d Temp3 %d", chipNum, temp1, temp2, temp3);
 		//send_msg(s);
 	}
+
+	time_step++;
+}
+
+char *ftoa(float num, int precision)
+{
+  static char s[20];
+
+  strcpy(s, itoa((int)num));
+  strcat(s, ".");
+  strcat(s, itoa(frac(num, precision)));
+
+  return s;
 }
 
 // Return fractional part
@@ -125,17 +145,6 @@ char *itoa(uint n)
 
     rv[j] = '\0';
     return rv;
-}
-
-char *ftoa(float num, int precision)
-{
-  static char s[20];
-
-  strcpy(s, itoa((int)num));
-  strcat(s, ".");
-  strcat(s, itoa(frac(num, precision)));
-
-  return s;
 }
 
 // Send SDP packet to host (for reporting purposes)
