@@ -2,11 +2,11 @@ The temperature rig is allowed to settle for 5 min (after the temperature setpoi
 
 Temperature controller configuration
 ------------------------------------
-On/off control
+On/off control (CtrL=0, oP1=0, oPL=0, oPH=220, CF=heater)
 Hysteris time = 0s
 Controller on  @ T-0.1deg
 Controller off @ T
-Temperature deviation = 0.1deg
+Temperature deviation = 0.1deg (dF)
 
 PSU voltage 8V
 
@@ -24,11 +24,16 @@ app_sig all 16 sync0
 Numbers refer to experiment order
 =================================
 
+Measured on 16.01.2015 (RT=26.3deg)
+
+Heating
+=======
 1. Temps rising monotonically ("going up" folder)
 -------------------------------------------------
 Temp  I_limit/I  Temp min  Temp max  Fan
 ----  ---------  --------  --------  ---
 Peltier heating
+26.3  0          26.3      26.3      off (Room temperature reading 16.01.2015)
 30    1.5        29.9      30.2      off
 35    1.5        34.9      35.2      off
 40    1.5        39.8      40.2      off
@@ -50,23 +55,31 @@ Peltier heating
 60    1.8        59.6      60.2      off
 55    1.8        54.7      55.4      off
 50    1.5        49.7      50.2      off
-45    1.5        44.8      45.3      off
-40    1.5        
-35
-30
+45    1.5        44.8      45.3      off (Stopped here on 16.01.2015)
+45    1.5        44.7      45.2      off (Started again from 45deg on 19.01.2015)
+40    1.5        39.7      40.2      off
+35    1.5        34.9      35.2      off
+30    1.5        29.9      30.2      off
+25    1.5        25.1      25.2      off (Room temperature on 19.01.2015)
+23.7  0          23.7      24.2      off (Room temperature reading 19.01.2015. There is visible self-heating)
 
+
+Cooling
+=======
+Temperature controller configuration
+------------------------------------
+On/off control (CtrL=0, oP1=0, oPL=0, oPH=220, CF=cooler)
+Hysteris time = 0s
+Controller on  @ T+0.1deg
+Controller off @ T
+Temperature deviation = 0.1deg
+
+Temp  I_limit/I  Temp min  Temp max  Fan
+----  ---------  --------  --------  ---
 Peltier cooling (Peltier +ve/-ve connections swapped at this point)
-25
-20
-15
-10
- 5
-
-3. Temps rising monotonically ("going up" folder)
--------------------------------------------------
-Peltier cooling
-10  on
-15  on
-20  on
-25  on
-
+20    1.5        20.0      20.3      off
+20    2.0        19.8      20.0      on
+15    2.0        14.7      15.2      on
+10    2.0         9.8      10.2      on
+ 5    2.5         5.0      5.4       on
+ 0    3.0        -0.1      0.0       on (controller setpoint at -0.3. Peltier always on)
