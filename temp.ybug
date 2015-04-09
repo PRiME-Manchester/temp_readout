@@ -1,5 +1,5 @@
 iptag 1 set . 17895
 
 app_load temp.aplx all 1-16 16
-sleep 300
+sleep
 app_sig all 16 sync0
